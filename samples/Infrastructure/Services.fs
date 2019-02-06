@@ -1,9 +1,10 @@
 ﻿module Samples.Infrastructure.Services
 
 open Microsoft.Extensions.DependencyInjection
+open Newtonsoft.Json
 open System
 
-let serializationSettings = Newtonsoft.Json.Converters.FSharp.Settings.CreateCorrect()
+let serializationSettings = JsonSerializerSettings()
 let genCodec<'Union when 'Union :> TypeShape.UnionContract.IUnionContract>() = Equinox.UnionCodec.JsonUtf8.Create<'Union>(serializationSettings)
 
 type StreamResolver(storage) =

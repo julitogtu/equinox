@@ -2,8 +2,6 @@
 module Domain.Infrastructure
 
 open FSharp.UMX
-open Newtonsoft.Json
-open Newtonsoft.Json.Converters.FSharp
 open System
 
 #if NET461
@@ -18,47 +16,20 @@ module Seq =
             None
 #endif
 
-/// Endows any type that inherits this class with standard .NET comparison semantics using a supplied token identifier
-[<AbstractClass>]
-type Comparable<'TComp, 'Token when 'TComp :> Comparable<'TComp, 'Token> and 'Token : comparison>(token : 'Token) =
-    member private __.Token = token
-    override x.Equals y = match y with :? Comparable<'TComp, 'Token> as y -> x.Token = y.Token | _ -> false
-    override __.GetHashCode() = hash token
-    interface IComparable with
-        member x.CompareTo y =
-            match y with
-            | :? Comparable<'TComp, 'Token> as y -> compare x.Token y.Token
-            | _ -> invalidArg "y" "invalid comparand"
-
-/// Endows any type that inherits this class with standard .NET comparison semantics using a supplied token identifier
-/// + treats the token as the canonical rendition for `ToString()` purposes
-[<AbstractClass>]
-type StringId<'TComp when 'TComp :> Comparable<'TComp, string>>(token : string) =
-    inherit Comparable<'TComp,string>(token)
-    override __.ToString() = token
-
 module Guid =
     let inline toStringN (x : Guid) = x.ToString "N"
 
-/// SkuId strongly typed id
-/// - Ensures canonical rendering without dashes via ToString + Newtonsoft.Json
-/// - Guards against XSS by only permitting initialization based on Guid.Parse
-/// - Implements comparison/equality solely to enable tests to leverage structural equality 
-[<Sealed; AutoSerializable(false); JsonConverter(typeof<SkuIdJsonConverter>)>]
-type SkuId private (id : string) =
-    inherit StringId<SkuId>(id)
-    new(value : Guid) = SkuId(value.ToString "N")
-    /// Required to support empty
-    [<Obsolete>] new() = SkuId(Guid.NewGuid())
-/// Represent as a Guid.ToString("N") output externally
-and private SkuIdJsonConverter() =
-    inherit JsonIsomorphism<SkuId, string>()
-    /// Renders as per `Guid.ToString("N")`, i.e. no dashes
-    override __.Pickle value = string value
-    /// Input must be a `Guid.Parse`able value
-    override __.UnPickle input = Guid.Parse input |> SkuId
-type [<Measure>] skuId
-module SkuId = let parse (value : Guid<skuId>) : SkuId = SkuId(%value)
+/// SkuId strongly typed id, represented internally as a string
+/// - Ensures canonical rendering without dashes via ToString, Newtonsoft.Json, sprintf "%s" etc
+/// - using string enables one to lean on structural equality for types embedding one
+/// - For Skus, an important side effect of representing as a string is that comparison/equality is efficient for dictionaries
+type SkuId = string<skuId>
+and [<Measure>] skuId
+module SkuId =
+    /// - For web inputs, should guard against XSS by only permitting initialization based on SkuId.parse
+    /// - For json deserialization where the saved representation is not trusted to be in canonical Guid form,
+    ///     it is recommended to bind to a Guid and then upconvert to string<skuId>
+    let parse (value : Guid<skuId>) : string<skuId> = % Guid.toStringN %value
 
 /// RequestId strongly typed id, represented internally as a string
 /// - Ensures canonical rendering without dashes via ToString, Newtonsoft.Json, sprintf "%s" etc

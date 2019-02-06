@@ -3,15 +3,10 @@ module Equinox.MemoryStore.Integration.Infrastructure
 
 open Serilog
 
-open Domain
 open FsCheck
-open System
-
-type FsCheckGenerators =
-    static member SkuId = Arb.generate |> Gen.map SkuId |> Arb.fromGen
 
 type AutoDataAttribute() =
-    inherit FsCheck.Xunit.PropertyAttribute(Arbitrary = [|typeof<FsCheckGenerators>|], MaxTest = 1, QuietOnSuccess = true)
+    inherit FsCheck.Xunit.PropertyAttribute(MaxTest = 1, QuietOnSuccess = true)
 
 // Derived from https://github.com/damianh/CapturingLogOutputWithXunit2AndParallelTests
 // NB VS does not surface these atm, but other test runners / test reports do

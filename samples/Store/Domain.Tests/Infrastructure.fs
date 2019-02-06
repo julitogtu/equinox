@@ -8,11 +8,8 @@ open Swensen.Unquote
 open System
 open global.Xunit
 
-type FsCheckGenerators =
-    static member SkuId = Arb.generate |> Gen.map SkuId |> Arb.fromGen
-
 type DomainPropertyAttribute() =
-    inherit FsCheck.Xunit.PropertyAttribute(QuietOnSuccess = true, Arbitrary=[| typeof<FsCheckGenerators> |])
+    inherit FsCheck.Xunit.PropertyAttribute(QuietOnSuccess = true)
 
 let rnd = new Random()
 // https://www.rosettacode.org/wiki/Knuth_shuffle#F.23
