@@ -2,14 +2,37 @@
 module Samples.Store.Domain.Tests.Infrastructure
 
 open Domain
+open Domain.Favorites
+open Domain.Favorites.Events
 open FsCheck
 open FSharp.UMX
 open Swensen.Unquote
 open System
 open global.Xunit
 
+type FsCheckGenerators() =
+    static member Favorited : Gen<Favorited> = gen {
+       let! e = Arb.generate
+       // TODO stop SO exception
+       let! (NonEmptyString sku) = Arb.generate
+       return { e with skuId = %sku } 
+    }
+    static member Unfavorited : Gen<Unfavorited> = gen {
+       let! (NonEmptyString sku) = Arb.generate
+       return { skuId = %sku } 
+    }
+    static member Command : Gen<Command> = gen {
+       let! (NonEmptyString sku) = Arb.generate
+       let! skus = Arb.generate
+       // TODO really I'd like to generate the command with a non-null string Arb in effect to avoid this busywork
+       let! c = Arb.generate
+       match c with
+       | Favorite (d,_skus) -> return Favorite (d,skus |> List.filter (fun x -> UMX.untag x <> null))
+       | Unfavorite _sku -> return Unfavorite %sku
+    }
+
 type DomainPropertyAttribute() =
-    inherit FsCheck.Xunit.PropertyAttribute(QuietOnSuccess = true)
+    inherit FsCheck.Xunit.PropertyAttribute(QuietOnSuccess = true, Arbitrary=[| typeof<FsCheckGenerators> |])
 
 let rnd = new Random()
 // https://www.rosettacode.org/wiki/Knuth_shuffle#F.23
